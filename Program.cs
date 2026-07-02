@@ -48,4 +48,10 @@ app.MapGet("/cars/{carNumber}", (int carNumber, TelemetryService service) =>
     return Results.Ok(carTelemetry);
 });
 
+
+app.MapGet("/session-summary", (TelemetryService service) =>
+{
+    return Results.Ok(service.GetSessionSummary());
+});
+
 app.Run();
