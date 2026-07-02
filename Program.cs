@@ -1,12 +1,12 @@
+using TelemetryServer.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton<TelemetryService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -14,28 +14,38 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/", () =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    return "TelemetryServer is running. Try /telemetry, /fastest-lap, or /cars/12";
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapGet("/telemetry", (TelemetryService service) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    return service.GetAllTelemetry();
+});
+
+app.MapGet("/fastest-lap", (TelemetryService service) =>
+{
+    var fastestLap = service.GetFastestLap();
+
+    if (fastestLap == null)
+    {
+        return Results.NotFound("No telemetry data found.");
+    }
+
+    return Results.Ok(fastestLap);
+});
+
+app.MapGet("/cars/{carNumber}", (int carNumber, TelemetryService service) =>
+{
+    var carTelemetry = service.GetTelemetryByCarNumber(carNumber);
+
+    if (carTelemetry.Count == 0)
+    {
+        return Results.NotFound($"No telemetry found for car {carNumber}.");
+    }
+
+    return Results.Ok(carTelemetry);
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
